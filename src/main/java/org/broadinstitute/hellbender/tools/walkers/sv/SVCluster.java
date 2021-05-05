@@ -29,8 +29,7 @@ import java.util.stream.Collectors;
 import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
 
 /**
- * Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:
- *
+ * <p>Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:</p>
  * <ul>
  *     <li>
  *         Clustering SVs produced by multiple callers, based on interval overlap, breakpoint proximity, and sample overlap.
@@ -43,8 +42,13 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  *     </li>
  * </ul>
  *
- * For clustering tasks, the tool determines whether two variants should cluster based following criteria:
+ * <p>Clustering tasks can be accomplished using one of two algorithms. The SINGLE_LINKAGE algorithm produces clusters
+ * for which all members cluster with <i>at least one</i> other member. The MAX_CLIQUE algorithm, however,
+ * requires that all members cluster with <i>every other</i> member. The latter is in general non-polynomial in time and
+ * space but implemented to minimize computations by traversing variants ordered by start position and efficiently
+ * finalizing "active" clusters that are determined to be complete.</p>
  *
+ * <p>The tool determines whether two given variants should cluster based following criteria:</p>
  * <ul>
  *     <li>
  *         Matching SV type, with the exception of DEL/DUP combinations when --enable-cnv is used.
@@ -66,8 +70,22 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  *     </li>
  * </ul>
  *
- * Interval overlap, break-end window, and sample overlap parameters are defined for three combinations of event types
- * using the ALGORITHMS field:
+ * <p>For CNV defragmentation (DEFRAGMENT_CNV DEFRAGMENT_CNV algorithm), the tool uses single-linkage clustering based
+ * on the following criteria:</p>
+ * <ul>
+ *     <li>
+ *         Must be a DEL/DUP/CNV and only be supported by a depth algorithm.
+ *     </li>
+ *     <li>
+ *         Matching SV type
+ *     </li>
+ *     <li>
+ *         Overlapping and meeting sample reciprocal overlap (see above) after padding both sides of each variant by the
+ *         specified fraction of event length specified by --defrag-padding-fraction.
+ * </ul>
+ *
+ * <p>Interval overlap, break-end window, and sample overlap parameters are defined for three combinations of event types
+ * using the ALGORITHMS field:</p>
  * <ul>
  *     <li>
  *         Depth-only - both variants have only "depth" ALGORITHMS
@@ -80,7 +98,7 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  *     </li>
  * </ul>
  *
- * Users must supply one or more VCFs containing SVs with the following info fields:
+ * <p>Users must supply one or more VCFs containing SVs with the following info fields:</p>
  *
  * <ul>
  *     <li>
@@ -101,8 +119,8 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  *     </li>
  * </ul>
  *
- * The tool generates a new VCF with clusters collapsed into single representative records. By default, a MEMBERS field
- * is generated that lists the input variant IDs contained in that record's cluster.
+ * <p>The tool generates a new VCF with clusters collapsed into single representative records. By default, a MEMBERS field
+ * is generated that lists the input variant IDs contained in that record's cluster.</p>
  *
  * <h3>Inputs</h3>
  *
@@ -131,7 +149,6 @@ import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSeg
  *
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
-
 @CommandLineProgramProperties(
         summary = "Clusters structural variants",
         oneLineSummary = "Clusters structural variants",
@@ -148,9 +165,21 @@ public final class SVCluster extends MultiVariantWalker {
     public static final String FAST_MODE_LONG_NAME = "fast-mode";
     public static final String OMIT_MEMBERS_LONG_NAME = "omit-members";
 
+    /**
+     * The enum Cluster algorithm.
+     */
     enum CLUSTER_ALGORITHM {
+        /**
+         * Defragment cnv cluster algorithm.
+         */
         DEFRAGMENT_CNV,
+        /**
+         * Single linkage cluster algorithm.
+         */
         SINGLE_LINKAGE,
+        /**
+         * Max clique cluster algorithm.
+         */
         MAX_CLIQUE
     }
 
@@ -168,6 +197,9 @@ public final class SVCluster extends MultiVariantWalker {
     )
     private String variantPrefix = null;
 
+    /**
+     * When enabled, DEL/DUP variants can be clustered together and the resulting record with have SVTYPE of CNV.
+     */
     @Argument(
             doc = "Enable clustering DEL/DUP variants together as CNVs (does not apply to CNV defragmentation)",
             fullName = ENABLE_CNV_LONG_NAME,
@@ -175,6 +207,9 @@ public final class SVCluster extends MultiVariantWalker {
     )
     private boolean enableCnv = false;
 
+    /**
+     * When enabled, INV records will be converted to a pairs of BNDs prior to clustering.
+     */
     @Argument(
             doc = "Convert inversions to BND records",
             fullName = CONVERT_INV_LONG_NAME,
@@ -182,6 +217,10 @@ public final class SVCluster extends MultiVariantWalker {
     )
     private boolean convertInversions = false;
 
+    /**
+     * Results in substantial space and time costs for large sample sets by clearing genotypes that are not needed for
+     * clustering, but any associated annotation fields will be set to null in the output.
+     */
     @Argument(
             doc = "Fast mode. Drops hom-ref and no-call genotype fields and emits them as no-calls.",
             fullName = FAST_MODE_LONG_NAME,
@@ -340,9 +379,15 @@ public final class SVCluster extends MultiVariantWalker {
         return header;
     }
 
+    /**
+     * Build variant context variant context.
+     *
+     * @param call the call
+     * @return the variant context
+     */
     public VariantContext buildVariantContext(final SVCallRecord call) {
         // In case we're using fast mode
-        final GenotypesContext filledGenotypes = SVCallRecordUtils.fillMissingSamplesWithGenotypes(call.getGenotypes(), FAST_MODE_DEFAULT_NON_CALL_ALLELES, samples, Collections.emptyMap());
+        final GenotypesContext filledGenotypes = SVCallRecordUtils.fillMissingSamplesWithGenotypes(call.getGenotypes(), samples, FAST_MODE_DEFAULT_NON_CALL_ALLELES, Collections.emptyMap());
 
         // Assign new variant ID
         final String newId = variantPrefix == null ? call.getId() : String.format("%s%08x", variantPrefix, numVariantsWritten++);

@@ -214,15 +214,21 @@ public class SVTestUtils {
             Arrays.asList(sample1, sample2));
 
     public static void assertEqualsExceptMembership(final SVCallRecord one, final SVCallRecord two) {
+        assertEqualsExceptExcludedAttributes(one, two, Collections.singletonList(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
+    }
+
+    public static void assertEqualsExceptExcludedAttributes(final SVCallRecord one, final SVCallRecord two, final Collection<String> excludedAttributeKeys) {
         if (one == two) return;
         Assert.assertEquals(one.getAlgorithms(), two.getAlgorithms());
         Assert.assertEquals(one.getAlleles(), two.getAlleles());
 
         // Exclude MEMBERS field
         final Map<String, Object> attributesOne = new HashMap<>(one.getAttributes());
-        attributesOne.remove(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
         final Map<String, Object> attributesTwo = new HashMap<>(two.getAttributes());
-        attributesTwo.remove(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
+        for (final String key : excludedAttributeKeys) {
+            attributesOne.remove(key);
+            attributesTwo.remove(key);
+        }
         Assert.assertEquals(attributesOne, attributesTwo);
 
         Assert.assertEquals(one.getPositionAInterval(), two.getPositionAInterval());
@@ -286,7 +292,7 @@ public class SVTestUtils {
                 Collections.emptyMap());
     }
 
-    public static SVCallRecord newNamedDeletionCallRecordWithAttributes(final String id, final Map<String, Object> attributes) {
+    public static SVCallRecord newNamedDeletionRecordWithAttributes(final String id, final Map<String, Object> attributes) {
         return new SVCallRecord(id, "chr1", 100, true, "chr1", 199, false,
                 StructuralVariantType.DEL,
                 100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
@@ -327,5 +333,64 @@ public class SVTestUtils {
         return new SVCallRecord("", "chr1", start, true, "chr1", end, false,
                 svtype, end - start + 1, Collections.singletonList("pesr"), Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
+    }
+
+    public static SVCallRecord newCallRecordWithStrands(final boolean strandA, final boolean strandB) {
+        return new SVCallRecord("", "chr1", 1000, strandA, "chr1", 1999, strandB, StructuralVariantType.DEL, 1000,
+                Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
+    public static SVCallRecord newCallRecordWithCoordinates(final String id, final String chrA, final int posA, final String chrB, final int posB) {
+        return new SVCallRecord(id, chrA, posA, true, chrB, posB, false, StructuralVariantType.DEL, chrA.equals(chrB) ? posB - posA + 1 : -1,
+                Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
+    public static SVCallRecord newCallRecordWithAlgorithms(final List<String> algorithms) {
+        return new SVCallRecord("", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, length,
+                algorithms,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
+    public static SVCallRecord newCallRecordInsertionWithLength(final int length) {
+        return new SVCallRecord("", "chr1", 1000, true, "chr1", 1000, false, StructuralVariantType.INS, length,
+                Collections.singletonList("pesr"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyMap());
+    }
+
+    public static VariantContext newVariantContext(final String id, final String chrA, final int posA,
+                                                   final int end, final List<Allele> alleles,
+                                                   final List<Genotype> genotypes, final int svlen,
+                                                   final String strands, final StructuralVariantType svtype,
+                                                   final List<String> algorithms, final String chr2, final Integer end2,
+                                                   final Map<String, Object> extendedAttributes) {
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put(GATKSVVCFConstants.SVLEN, svlen);
+        attributes.put(GATKSVVCFConstants.SVTYPE, svtype);
+        attributes.put(GATKSVVCFConstants.STRANDS_ATTRIBUTE, strands);
+        attributes.put(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, algorithms);
+        if (chr2 != null && end2 != null) {
+            attributes.put(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
+            attributes.put(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
+        }
+        attributes.putAll(extendedAttributes);
+        return new VariantContextBuilder()
+                .id(id)
+                .start(posA)
+                .chr(chrA)
+                .stop(end)
+                .alleles(alleles)
+                .genotypes(genotypes)
+                .attributes(attributes)
+                .make();
     }
 }

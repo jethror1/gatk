@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * CNV defragmenter for when the intervals used for coverage collection are available. The intervals are used to adjust
+ * variant padding by rounding to the nearest bin boundary.
+ */
 public class BinnedCNVDefragmenter extends CNVDefragmenter {
 
     protected final TreeMap<GenomeLoc, Integer> genomicToBinMap;
@@ -26,9 +30,7 @@ public class BinnedCNVDefragmenter extends CNVDefragmenter {
         parser = new GenomeLocParser(this.dictionary);
     }
 
-    /**
-     * This is difficult to determine for arbitrary bin sizes.
-     */
+    // TODO: try to calculate this by sweeping through the bin intervals
     @Override
     protected int getMaxClusterableStartingPosition(final SVCallRecord call) {
         Utils.nonNull(call);

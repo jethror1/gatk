@@ -169,7 +169,7 @@ public final class SVPreprocessRecords extends MultiVariantWalker {
 
     private VariantContext createVariant(final SVCallRecord call) {
         final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(call);
-        builder.genotypes(SVCallRecordUtils.fillMissingSamplesWithGenotypes(builder.getGenotypes(), DEFAULT_ALLELES, samples, Collections.emptyMap()));
+        builder.genotypes(SVCallRecordUtils.fillMissingSamplesWithGenotypes(builder.getGenotypes(), samples, DEFAULT_ALLELES, Collections.emptyMap()));
         return builder.make();
     }
 

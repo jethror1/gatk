@@ -10,14 +10,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Base class for clustering items that possess start/end genomic coordinates. Efficient algorithms are implemented for
- * single-linkage and max-clique clustering that leverage the low-dimensionality of position-based clustering criteria.
+ * <p>Base class for clustering items that possess start/end genomic coordinates. Efficient algorithms are implemented for
+ * single-linkage and max-clique clustering that leverage the low dimensionality of position-based clustering criteria.
  * These algorithms are suitable for clustering problems testing for overlapping events in coordinate-sorted order, with
  * additional possible criteria, when the maximum feasible starting position for an item can be easily estimated (e.g.
- * reciprocal overlap, end-point distance).
+ * reciprocal overlap, end-point distance).</p>
  *
- * A precise implementation of {@getMaxClusterableStartingPosition} is important for efficiency because it determines
- * when a cluster can be finalized and omitted from further clustering tests.
+ * <p>NOTE: precise implementation of {@link #getMaxClusterableStartingPosition(SVLocatable) getMaxClusterableStartingPosition}
+ * is important for efficiency because it determines when a cluster can be finalized and omitted from further clustering tests.</p>
  *
  * @param <T> class of items to cluster
  */
@@ -72,8 +72,8 @@ public abstract class LocatableClusterEngine<T extends SVLocatable> {
 
     /**
      * Returns the maximum feasible starting position of any other item with the given item. That is, given item A and
-     * `X = getMaxClusterableStartingPosition(A)`, then for any item B on the current contig,
-     * `Y = start(B) > X => clusterTogether(A, B) == false`. Note that this is an upper-bound, but tighter estimates
+     * X = getMaxClusterableStartingPosition(A), then for any item B on the current contig,
+     * Y = start(B) > X => clusterTogether(A, B) == false. Note that this is an upper-bound, but tighter estimates
      * can greatly improve performance.
      * @param item item in question
      * @return max feasible clusterable start coordinate on the current contig

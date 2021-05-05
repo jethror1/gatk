@@ -18,23 +18,24 @@ import java.util.stream.Collectors;
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
 
 /**
- * Clusters SVs based on event type, interval overlap, and sample overlap.
+ * <p>Main class for SV clustering. Two items are clustered together if they:</p>
+ * <ul>
+ *   <li>Match event types</li>
+ *   <li>Match strands</li>
+ *   <li>Match contigs</li>
+ *   <li>Meet minimum interval reciprocal overlap (unless inter-chromosomal or a BND).</li>
+ *   <li>Meet minimum sample reciprocal overlap using carrier status. Genotypes (GT fields) are used to determine carrier
+ *   status first. If not found and the event is of type DEL or DUP, then copy number (CN fields) are used instead.
+ *   In the latter case, it is expected that ploidy can be determined from the number of entries in GT.</li>
+ *   <li>Start and end coordinates are within a defined distance.</li>
+ * </ul>
  *
- * Two items are clustered together if they:
- *   - Match event types
- *   - Match strands
- *   - Match contigs
- *   - Meet minimum interval reciprocal overlap (unless inter-chromosomal or a BND).
- *   - Meet minimum sample reciprocal overlap using carrier status. Genotypes (GT fields) are used to determine carrier
- *     status first. If not found and the event is of type DEL or DUP, then copy number (CN fields) are used instead.
- *     In the latter case, it is expected that ploidy can be determined from the number of entries in GT.
- *   - Start and end coordinates are within a defined distance.
- *
- * Interval overlap, sample overlap, and coordinate proximity parameters are defined separately for depth-only/depth-only,
- * depth-only/PESR, and PESR/PESR pairs using the {@ClusteringParameters} class. Note that all criteria must be met for
- * two candidate items to cluster, unless the comparison is depth-only/depth-only, in which case at least one of
- * interval overlap and break-end proximity must be met. For insertions with undefined length (SVLEN less than 1), interval
- * overlap is tested assuming the given start position and a length of {@INSERTION_ASSUMED_LENGTH_FOR_OVERLAP}.
+ * <p>Interval overlap, sample overlap, and coordinate proximity parameters are defined separately for depth-only/depth-only,
+ * depth-only/PESR, and PESR/PESR item pairs using the {@link ClusteringParameters} class. Note that all criteria must be met for
+ * two candidate items to cluster, unless the comparison is depth-only/depth-only, in which case only one of
+ * interval overlap or break-end proximity must be met. For insertions with undefined length (SVLEN less than 1), interval
+ * overlap is tested assuming the given start position and a length of
+ * {@value SVClusterEngine#INSERTION_ASSUMED_LENGTH_FOR_OVERLAP}.</p>
  */
 public class SVClusterEngine<T extends SVCallRecord> extends LocatableClusterEngine<T> {
 

@@ -144,7 +144,7 @@ public class BreakpointRefiner {
      * @return position
      */
     private int getEndLowerBound(final SVCallRecord call, final int refinedStartPosition) {
-        if (!SVCallRecordUtils.isIntrachromosomal(call)) {
+        if (!call.isIntrachromosomal()) {
             return 1;
         }
         if (call.getType().equals(StructuralVariantType.INS)) {

@@ -14,6 +14,12 @@ import java.util.Set;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.COPY_NUMBER_FORMAT;
 
+/**
+ * Clustering engine class for defragmenting depth-based DEL/DUP calls, such as those produced by
+ * {@link org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller GermlineCNVCaller}. Each variant is first padded by a fraction
+ * of its length and then merged with any other overlapping variants that meet the minimum sample overlap. Additionally,
+ * singleton variants (with only one carrier sample) will only be merged with variants of the same copy number.
+ */
 public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
 
     public static final double DEFAULT_SAMPLE_OVERLAP = 0.8;
@@ -22,7 +28,6 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
     protected final double minSampleOverlap;
     protected final double paddingFraction;
 
-    //for single-sample clustering case
     public CNVDefragmenter(final SAMSequenceDictionary dictionary, final double paddingFraction,
                            final double minSampleOverlap) {
         super(dictionary, CLUSTERING_TYPE.SINGLE_LINKAGE, false,
@@ -31,12 +36,6 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
         this.paddingFraction = paddingFraction;
     }
 
-    /**
-     * Determine if two variants should cluster based on their padded intervals and genotyped samples
-     * @param a
-     * @param b
-     * @return true if the two variants should be in the same cluster
-     */
     @Override
     boolean clusterTogether(final SVCallRecord a, final SVCallRecord b) {
         // Only do clustering on depth-only CNVs
@@ -58,7 +57,7 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
         }
 
         // In the single-sample case, match copy number strictly if we're looking at the same sample
-        // TODO repeated check for CN attributes in hasSampleOverlap and getBestAvailableCarrierSamples
+        // TODO repeated check for CN attributes in hasSampleOverlap and getCarrierSamples
         final Set<String> carriersA = getCarrierSamples(a);
         final Set<String> carriersB = getCarrierSamples(b);
         if (carriersA.size() == 1 && carriersA.equals(carriersB)) {
@@ -84,8 +83,8 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
     }
 
     /**
-     * Max clusterable position depends on the other variant's length, which is unknown, so we calculate the size
-     * of the largest possible event that would extend to the end of the contig.
+     * Max clusterable position depends on the other variant's length, which is unknown, so we assume the largest
+     * possible event that would extend to the end of the contig.
      */
     @Override
     protected int getMaxClusterableStartingPosition(final SVCallRecord call) {
@@ -95,10 +94,8 @@ public class CNVDefragmenter extends SVClusterEngine<SVCallRecord> {
     }
 
     /**
-     * Determine an overlap interval for clustering using padding specified at object construction
-     * Returned interval represents the interval in which the start position of a new event must fall in order to be
-     * added to the cluster (including the new event)
-     * @return  an interval describing a cluster containing only this variant
+     * Determine an overlap interval for clustering using specified padding.
+     * @return padded interval
      */
     protected SimpleInterval getPaddedRecordInterval(final String contig, final int start, final int end) {
         return new SimpleInterval(contig, start, end)

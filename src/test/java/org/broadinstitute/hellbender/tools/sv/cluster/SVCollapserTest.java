@@ -124,6 +124,22 @@ public class SVCollapserTest {
     @DataProvider(name = "collapseSampleAllelesTestData")
     public Object[][] collapseSampleAllelesTestData() {
         return new Object[][]{
+                // empty
+                {
+                        Collections.singletonList(
+                                Collections.emptyList()
+                        ),
+                        Collections.emptyList(),
+                        Collections.emptyList()
+                },
+                // null
+                {
+                        Collections.singletonList(
+                                Collections.singletonList(null)
+                        ),
+                        Collections.emptyList(),
+                        Collections.singletonList(Allele.REF_N)
+                },
                 // REF
                 {
                         Collections.singletonList(
@@ -239,6 +255,14 @@ public class SVCollapserTest {
     @DataProvider(name = "collapseAttributesTestData")
     public Object[][] collapseAttributesTestData() {
         return new Object[][]{
+                // Null value
+                {
+                        Collections.singletonList("var1"),
+                        Collections.singletonList(new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}),
+                        Collections.singletonList(new Object[]{null}),
+                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
+                        new Object[]{null}
+                },
                 // Single key / value
                 {
                         Collections.singletonList("var1"),
@@ -246,6 +270,19 @@ public class SVCollapserTest {
                         Collections.singletonList(new Object[]{30}),
                         new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
                         new Object[]{30}
+                },
+                // Two samples, null values
+                {
+                        Lists.newArrayList("var1", "var2"),
+                        Lists.newArrayList(
+                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
+                                new String[]{VCFConstants.GENOTYPE_QUALITY_KEY}
+                        ),
+                        Lists.newArrayList(
+                                new Object[]{null},
+                                new Object[]{null}),
+                        new String[]{VCFConstants.GENOTYPE_QUALITY_KEY},
+                        new Object[]{null}
                 },
                 // Two samples, same key/value
                 {
@@ -304,17 +341,16 @@ public class SVCollapserTest {
         final List<Genotype> genotypes = inputAttributesList.stream()
                 .map(m -> new GenotypeBuilder().attributes(m).make())
                 .collect(Collectors.toList());
-        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes, StructuralVariantType.DEL), expectedAttributes);
+        Assert.assertEquals(collapser.collapseGenotypeAttributes(genotypes), expectedAttributes);
 
         // Test as variant attributes
         final List<SVCallRecord> variants = IntStream.range(0, inputAttributesList.size())
-                .mapToObj(i -> SVTestUtils.newNamedDeletionCallRecordWithAttributes(variantIds.get(i), inputAttributesList.get(i)))
+                .mapToObj(i -> SVTestUtils.newNamedDeletionRecordWithAttributes(variantIds.get(i), inputAttributesList.get(i)))
                 .collect(Collectors.toList());
         final Map<String, Object> expectedAttributesWithMembers = new HashMap<>(expectedAttributes);
         expectedAttributesWithMembers.put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, variantIds);
         Assert.assertEquals(collapser.collapseVariantAttributes(variants), expectedAttributesWithMembers);
     }
-
 
     @DataProvider(name = "collapseLengthTestData")
     public Object[][] collapseLengthTestData() {
@@ -606,6 +642,7 @@ public class SVCollapserTest {
     @DataProvider(name = "alleleCollapserComparatorTestData")
     public Object[][] alleleCollapserComparatorTestData() {
         return new Object[][]{
+                {Collections.emptyList(), Collections.emptyList(), 0},
                 {Collections.singletonList(Allele.NO_CALL), Collections.singletonList(Allele.NO_CALL), 0},
                 {Collections.singletonList(Allele.REF_N), Collections.singletonList(Allele.REF_N), 0},
                 {Collections.singletonList(Allele.SV_SIMPLE_DEL), Collections.singletonList(Allele.SV_SIMPLE_DEL), 0},
