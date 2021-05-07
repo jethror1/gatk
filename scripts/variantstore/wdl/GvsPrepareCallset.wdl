@@ -8,7 +8,7 @@ workflow GvsPrepareCallset {
 
         # inputs with defaults
         String query_project = data_project
-        String? query_labels
+        Array[String]? query_labels
         String destination_project = data_project
         String destination_dataset = default_dataset
 
@@ -21,7 +21,7 @@ workflow GvsPrepareCallset {
         String? docker
     }
 
-    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_20200414"])
+    String docker_final = select_first([docker, "us.gcr.io/broad-dsde-methods/variantstore:rori-test-labels"])
 
     call PrepareCallsetTask {
         input:
@@ -48,7 +48,7 @@ task PrepareCallsetTask {
     input {
         String destination_cohort_table_name
         String query_project
-        String? query_labels
+        Array[String]? query_labels
 
         String fq_petvet_dataset
         String fq_cohort_sample_table
