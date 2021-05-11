@@ -14,13 +14,16 @@ public class GATKReadsBundleTest extends BaseTest {
     private final static String INDEX_FILE = "reads.bai";
 
     public static final String EXPECTED_JSON_STRING =
-            "{\"schemaVersion\":\"0.1.0\",\"INDEX\":{\"path\":\"reads.bai\"},\"schemaName\":\"htsbundle\",\"READS\":{\"path\":\"reads.bam\",\"subtype\":\"BAM\"},\"primary\":\"READS\"}";
+            "{\n  \"schemaName\":\"htsbundle\",\n  \"schemaVersion\":\"0.1.0\",\n  \"primary\":\"READS\",\n  \"READS_INDEX\":{\"path\":\"" + new GATKPath(INDEX_FILE).getURIString() + "\"},\n  \"READS\":{\"path\":\"" + new GATKPath(BAM_FILE).getURIString() + "\",\"subtype\":\"BAM\"}\n}\n";
 
     @Test
     public void testReadFromJSONString(){
         final String json = EXPECTED_JSON_STRING;
         final GATKReadsBundle gatkReadsBundleFromString = GATKReadsBundle.getGATKReadsBundleFromString(json);
-        final GATKPath path = new GATKPath(BAM_FILE);
+
+        // we need to use the uri string as the raw input string to ensure we get GATKPath equality with the
+        // bundle to match what the json deserializer does
+        final GATKPath path = new GATKPath(new GATKPath(BAM_FILE).getURIString());
 
         Assert.assertTrue(gatkReadsBundleFromString.getReads().getIOPath().get() instanceof GATKPath);
         Assert.assertEquals(gatkReadsBundleFromString.getReads().getIOPath().get(), path);
@@ -42,7 +45,9 @@ public class GATKReadsBundleTest extends BaseTest {
         final GATKReadsBundle gatkReadsBundleFromPath = GATKReadsBundle.getGATKReadsBundleFromPath(jsonFilePath);
         Assert.assertTrue(gatkReadsBundleFromPath.getReads().getIOPath().isPresent());
         Assert.assertTrue(gatkReadsBundleFromPath.getReads().getIOPath().get() instanceof GATKPath);
-        final GATKPath path = new GATKPath(BAM_FILE);
+        // we need to use the uri string as the raw input string to ensure we get GATKPath equality with the
+        // bundle to match what the json deserializer does
+        final GATKPath path = new GATKPath(new GATKPath(BAM_FILE).getURIString());
         Assert.assertEquals(gatkReadsBundleFromPath.getReads().getIOPath().get(), path);
     }
 
